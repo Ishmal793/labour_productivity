@@ -305,19 +305,7 @@ if analysis_choice == "Labor Productivity Analytics":
         )
         st.plotly_chart(fig_productivity_shift, use_container_width=True)
     
-        st.subheader("Productivity vs Labor Presence")
-        zone_colors = {'Low': 'red', "Yellow": "#FFFF8F", 'High': 'green'}
-        productivity_chart = px.scatter(
-            filtered_data,
-            x='Labor_Presence',
-            y='Productivity',
-            color='Productivity_Zone',
-            trendline="ols",  # adds a trendline for insight
-            color_discrete_map=zone_colors,
-            title="Productivity vs Labor Presence (Target: 90%)"
-        )
-        st.plotly_chart(productivity_chart)
-
+        
 
 
     elif metric == "Labor Target Productivity":
