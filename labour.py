@@ -304,19 +304,7 @@ if analysis_choice == "Labor Productivity Analytics":
             color_discrete_sequence = px.colors.qualitative.Set3
         )
         st.plotly_chart(fig_productivity_shift, use_container_width=True)
-        # Visualization 1: Productivity by Date (Bar Chart)
-        st.subheader("Productivity by Date")
-        fig_productivity_date = px.scatter(
-            filtered_data,
-            x='Date',
-            y='Productivity',
-            color='Shift',
-            trendline="ols",
-            title="Productivity by Date and Shift",
-            labels={'Productivity': 'Productivity (%)'},
-            color_discrete_sequence=px.colors.qualitative.Pastel
-        )
-        st.plotly_chart(fig_productivity_date, use_container_width=True)
+    
         st.subheader("Productivity vs Labor Presence")
         zone_colors = {'Low': 'red', "Yellow": "#FFFF8F", 'High': 'green'}
         productivity_chart = px.scatter(
