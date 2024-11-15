@@ -7,7 +7,7 @@ import plotly.graph_objects as go
 @st.cache_data
 def load_default_data():
     return pd.read_excel(
-        'Labor_Productivity_Analytics_Dataset.xlsx',
+        r'C:\Users\Extreme\OneDrive\Desktop\streamlit  dashboards\labour productivity\Labor_Productivity_Analytics_Dataset.xlsx',
         sheet_name='Sheet1',
         engine='openpyxl'
     )
@@ -304,8 +304,8 @@ if analysis_choice == "Labor Productivity Analytics":
             color_discrete_sequence = px.colors.qualitative.Set3
         )
         st.plotly_chart(fig_productivity_shift, use_container_width=True)
-    
-        
+
+
 
 
     elif metric == "Labor Target Productivity":
@@ -324,53 +324,25 @@ if analysis_choice == "Labor Productivity Analytics":
         st.plotly_chart(target_chart)
 
         # Additional Plot: Productivity by Shift and Department
-        fig2 = px.bar(filtered_data, x='Shift', y='Labor_Target_Productivity', color='Department',
+        fig2 = px.bar(filtered_data, x='Shift', y=['Labor_Total_Output', 'Labor_Target_Output'] ,
+                      title='Labor Target Productivity by Shift',
+                      labels={'Labor_Target_Productivity': 'Labor Target Productivity (%)', 'Shift': 'Shift'},
+                      barmode='group')
+        fig2.update_layout(xaxis_title='Shift', yaxis_title='Labor Target Productivity (%)')
+        st.plotly_chart(fig2)
+        # Additional Plot: Productivity by Shift and Department
+        fig2 = px.bar(filtered_data, x='Productivity_Zone', y=['Labor_Total_Output', 'Labor_Target_Output'] ,
+                      title='Labor Target Productivity by Productivity Zone ',
+                      labels={'Labor_Target_Productivity': 'Labor Target Productivity (%)', 'Shift': 'Shift'},
+                      barmode='group')
+        fig2.update_layout(xaxis_title='Shift', yaxis_title='Labor Target Productivity (%)')
+        st.plotly_chart(fig2)# Additional Plot: Productivity by Shift and Department
+        fig2 = px.bar(filtered_data, x='Labor_Efficiency_Rate', y=['Labor_Total_Output', 'Labor_Target_Output'] ,
                       title='Labor Target Productivity by Shift and Department',
                       labels={'Labor_Target_Productivity': 'Labor Target Productivity (%)', 'Shift': 'Shift'},
                       barmode='group')
         fig2.update_layout(xaxis_title='Shift', yaxis_title='Labor Target Productivity (%)')
         st.plotly_chart(fig2)
-
-        fig = px.scatter(
-            filtered_data,
-            x='Date',
-            y='Labor_Target_Productivity',
-            color='Shift',
-            title='Labor Target Productivity Over Time (Trendline)',
-            trendline="ols",
-            labels={'Labor_Target_Productivity': 'Labor Target Productivity (%)', 'Date': 'Date'}
-        )
-
-        # Display the chart
-        st.plotly_chart(fig)
-        zone_colors = {'Low': 'red', 'Yellow': '#FFFF8F', 'High': 'green'}
-        fig = px.scatter(
-            filtered_data,
-            x='Date',
-            y='Labor_Target_Productivity',
-            color='Productivity_Zone',
-            title='Labor Target Productivity Over Time (Trendline)',
-            trendline="ols",
-            color_discrete_map=zone_colors,
-            labels={'Labor_Target_Productivity': 'Labor Target Productivity (%)', 'Date': 'Date'}
-        )
-
-        # Display the chart
-        st.plotly_chart(fig)
-
-        # Additional Plot: Productivity Zone Distribution with Custom Colors
-        zone_colors = {'Low': 'red', 'Yellow': '#FFFF8F', 'High': 'green'}
-        fig3 = px.pie(
-            filtered_data,
-            names='Productivity_Zone',
-            title='Productivity Zone Distribution',
-            color='Productivity_Zone',
-            color_discrete_map=zone_colors,
-            hole=0.3
-        )
-        st.plotly_chart(fig3)
-
-
 
     elif metric == "Labor Efficiency Rate":
 
@@ -403,34 +375,6 @@ if analysis_choice == "Labor Productivity Analytics":
             title="Labor Efficiency Rate by Product Type",
             labels={'Labor_Efficiency_Rate': 'Efficiency Rate', 'Product_Type': 'Product Type'},
             color='Product_Type'
-        )
-        st.plotly_chart(fig)
-
-        # 3. Scatter Plot showing correlation between Labor Presence and Efficiency Rate
-        st.subheader("Correlation Between Labor Presence and Efficiency Rate in Shift")
-        fig = px.scatter(
-            filtered_data,
-            x='Labor_Presence',
-            y='Labor_Efficiency_Rate',
-            color='Shift',
-            trendline="ols",
-            title="Labor Presence vs Efficiency Rate",
-            labels={'Labor_Efficiency_Rate': 'Efficiency Rate', 'Labor_Presence': 'Labor Presence'},
-            hover_data=['Product_Type', 'Department']
-        )
-        st.plotly_chart(fig)
-        st.subheader("Correlation Between Labor Presence and Efficiency Rate in Productivity_Zone")
-        zone_colors = {'Low': 'red', 'Yellow': '#FFFF8F', 'High': 'green'}
-        fig = px.scatter(
-            filtered_data,
-            x='Labor_Presence',
-            y='Labor_Efficiency_Rate',
-            color='Productivity_Zone',
-            trendline="ols",
-            color_discrete_map=zone_colors,
-            title="Labor Presence vs Efficiency Rate",
-            labels={'Labor_Efficiency_Rate': 'Efficiency Rate', 'Labor_Presence': 'Labor Presence'},
-            hover_data=['Product_Type', 'Department']
         )
         st.plotly_chart(fig)
 
@@ -491,18 +435,6 @@ if analysis_choice == "Labor Productivity Analytics":
         )
         st.plotly_chart(fig)
 
-        # 4. Scatter Plot of Labor Efficiency Rate by Labor Presence, color-coded by Productivity Zone
-        st.subheader("Labor Efficiency Rate vs. Labor Presence by Productivity Zone")
-        fig = px.scatter(
-            filtered_data,
-            x='Labor_Presence',
-            y='Labor_Efficiency_Rate',
-            color='Productivity_Zone',
-            title="Labor Efficiency Rate vs. Labor Presence",
-            labels={'Labor_Efficiency_Rate': 'Efficiency Rate', 'Labor_Presence': 'Labor Presence'},
-            color_discrete_map={'Green': 'green', 'Yellow': 'yellow', 'Red': 'red'}
-        )
-        st.plotly_chart(fig)
 
 
     elif metric == "Labor Anomaly Conduct":
@@ -562,22 +494,56 @@ if analysis_choice == "Labor Productivity Analytics":
         )
 
         st.plotly_chart(fig)
-        fig = px.scatter(
-            filtered_data,
-            x="Labor_Efficiency_Rate",
-            y="Productivity",
-            color="Shift",
-            title="Productivity vs. Labor Efficiency Rate by Shift",
-            labels={"Labor_Efficiency_Rate": "Labor Efficiency Rate", "Productivity": "Productivity (%)"}
-        )
-
-        st.plotly_chart(fig)
-
 
 
 elif analysis_choice == "Parameters for Analytics":
     st.title("Labor Productivity Analytics by Parameters")
     if parameter == "Product":
+
+        # Top 5 Products by Sales and Profit
+        top_products = filtered_data.groupby('Product_Type').agg({
+            'Labor_Total_Output': 'sum',
+            'Labor_Target_Output': 'sum',
+            'Productivity': 'mean',
+            'Labor_Efficiency_Rate': 'mean'
+        }).sort_values(by='Labor_Total_Output', ascending=False).head(5).reset_index()
+
+        st.header("Top 5 Products by Sales and Profit")
+        fig1 = px.bar(top_products, x='Product_Type', y=['Labor_Total_Output', 'Labor_Target_Output'],
+                      title="Top 5 Products by Sales and Profit",
+                      labels={'value': 'Output (Units)', 'Product_Type': 'Product Type'},
+                      barmode='group')
+        st.plotly_chart(fig1)
+
+        # Bottom 5 Products by Sales and Profit
+        bottom_products = filtered_data.groupby('Product_Type').agg({
+            'Labor_Total_Output': 'sum',
+            'Labor_Target_Output': 'sum',
+            'Productivity': 'mean',
+            'Labor_Efficiency_Rate': 'mean'
+        }).sort_values(by='Labor_Total_Output', ascending=True).head(5).reset_index()
+
+        st.header("Bottom 5 Products by Sales and Profit")
+        fig2 = px.bar(bottom_products, x='Product_Type', y=['Labor_Total_Output', 'Labor_Target_Output'],
+                      title="Bottom 5 Products by Sales and Profit",
+                      labels={'value': 'Output (Units)', 'Product_Type': 'Product Type'},
+                      barmode='group')
+        st.plotly_chart(fig2)
+
+        # Profit by Department
+        st.header("Profit by Department")
+        profit_department =filtered_data.groupby('Department').agg({
+            'Labor_Total_Output': 'sum',
+            'Labor_Target_Output': 'sum',
+            'Labor_Efficiency_Rate': 'mean',
+            'Productivity': 'mean'
+        }).reset_index()
+
+        fig3 = px.bar(profit_department, x='Department', y=['Labor_Total_Output', 'Labor_Target_Output'],
+                      title="Profit by Department",
+                      labels={'value': 'Output (Units)', 'Department': 'Department'},
+                      barmode='group')
+        st.plotly_chart(fig3)
         st.subheader("Productivity by Product Type")
         product_chart = px.bar(
             filtered_data,
@@ -673,12 +639,6 @@ elif analysis_choice == "Parameters for Analytics":
                       title="Productivity by Department")
         st.plotly_chart(fig1)
 
-        # 2. Labor Presence vs. Productivity by Department
-        st.header("Labor Presence vs. Productivity by Department")
-        fig2 = px.scatter(filtered_data, x='Labor_Presence', y='Productivity', color='Department',
-                          title="Labor Presence vs. Productivity by Department")
-        st.plotly_chart(fig2)
-
         # 3. Total Output by Department and Product Type
         st.header("Total Output by Department and Product Type")
         fig3 = px.bar(filtered_data, x='Department', y='Labor_Total_Output', color='Product_Type', barmode='group',
@@ -704,11 +664,6 @@ elif analysis_choice == "Parameters for Analytics":
         fig1 = px.bar(filtered_data, x='Shift', y='Productivity', color='Shift', title="Overall Productivity by Shift")
         st.plotly_chart(fig1)
 
-        # 2. Labor Presence vs. Productivity by Shift
-        st.header("Labor Presence vs. Productivity by Shift")
-        fig2 = px.scatter(filtered_data, x='Labor_Presence', y='Productivity', color='Shift',
-                          title="Labor Presence vs. Productivity by Shift")
-        st.plotly_chart(fig2)
 
         # 3. Output by Shift and Product Type
         st.header("Output by Shift and Product Type")
@@ -859,11 +814,7 @@ elif analysis_choice == "Parameters for Analytics":
         fig1 = px.bar(filtered_data, x='Manager', y='Productivity', color='Manager', title="Productivity by Manager")
         st.plotly_chart(fig1)
 
-        # 2. Labor Presence vs. Productivity by Manager
-        st.header("Labor Presence vs. Productivity by Manager")
-        fig2 = px.scatter(filtered_data, x='Labor_Presence', y='Productivity', color='Manager',
-                          title="Labor Presence vs. Productivity by Manager")
-        st.plotly_chart(fig2)
+
 
         # 3. Total Output by Manager and Product Type
         st.header("Total Output by Manager and Product Type")
@@ -891,11 +842,7 @@ elif analysis_choice == "Parameters for Analytics":
                       title="Productivity by Factory Unit")
         st.plotly_chart(fig1)
 
-        # 2. Labor Presence vs. Productivity by Factory Unit
-        st.header("Labor Presence vs. Productivity by Factory Unit")
-        fig2 = px.scatter(filtered_data, x='Labor_Presence', y='Productivity', color='Factory_Unit',
-                          title="Labor Presence vs. Productivity by Factory Unit")
-        st.plotly_chart(fig2)
+
 
         # 3. Total Output by Factory Unit and Product Type
         st.header("Total Output by Factory Unit and Product Type")
@@ -917,16 +864,6 @@ elif analysis_choice == "Parameters for Analytics":
         st.plotly_chart(fig5)
 
     elif parameter == "Machine Unit":
-        # 7. Machine Unit - Productivity by Machine Unit
-        st.subheader("Productivity by Machine Unit")
-        machine_chart = px.scatter(
-            filtered_data,
-            x='Machine_Unit',
-            y='Labor_Total_Output',
-            color='Productivity_Zone',
-            title="Labor Total Output by Machine Unit"
-        )
-        st.plotly_chart(machine_chart)
 
         # 1. Overall Productivity by Machine Unit
         st.header("Overall Productivity by Machine Unit")
@@ -934,11 +871,6 @@ elif analysis_choice == "Parameters for Analytics":
                       title="Productivity by Machine Unit")
         st.plotly_chart(fig1)
 
-        # 2. Labor Presence vs. Productivity by Machine Unit
-        st.header("Labor Presence vs. Productivity by Machine Unit")
-        fig2 = px.scatter(filtered_data, x='Labor_Presence', y='Productivity', color='Machine_Unit',
-                          title="Labor Presence vs. Productivity by Machine Unit")
-        st.plotly_chart(fig2)
 
         # 3. Total Output by Machine Unit and Product Type
         st.header("Total Output by Machine Unit and Product Type")
@@ -1156,12 +1088,7 @@ elif analysis_choice == "Visual Themes of Labor Productivity":
                           labels={'Productivity': 'Average Productivity (%)'})
         st.plotly_chart(fig2)
 
-        # 3. Scatter Plot: Productivity Correlation by Factory and Machine Units
-        st.header("Productivity Correlation Across Factory and Machine Units")
-        fig3 = px.scatter(filtered_data, x='Machine_Unit', y='Productivity', color='Factory_Unit',
-                          title="Scatter Plot of Productivity by Factory and Machine Unit",
-                          labels={'Productivity': 'Productivity (%)'})
-        st.plotly_chart(fig3)
+
 
         # 4. Box Plot: Productivity Variation by Machine Unit within Factory Units
         st.header("Productivity Variation by Machine Unit within Factory Units")
@@ -1182,13 +1109,7 @@ elif analysis_choice == "Visual Themes of Labor Productivity":
                       labels={'Productivity': 'Average Productivity (%)'},color_discrete_map={'Green': 'green', 'Yellow': 'yellow', 'Red': 'red'})
         st.plotly_chart(fig1)
 
-        # 2. Bubble Chart: Productivity Zones by Shift with Anomalies
-        st.header("Productivity Zones by Shift with Anomalies")
-        fig2 = px.scatter(filtered_data, x='Shift', y='Productivity', size='Labor_Presence', color='Productivity_Zone',
-                          hover_data=['Department', 'Anomaly_Conduct'],
-                          title="Bubble Chart of Productivity Zones by Shift",
-                          labels={'Labor_Presence': 'Labor Presence (%)', 'Productivity': 'Productivity (%)'})
-        st.plotly_chart(fig2)
+
 
         # Calculate average productivity and standard deviation for real-time anomaly detection
         mean_productivity = filtered_data['Productivity'].mean()
