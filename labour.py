@@ -7,7 +7,7 @@ import plotly.graph_objects as go
 @st.cache_data
 def load_default_data():
     return pd.read_excel(
-        r'C:\Users\Extreme\OneDrive\Desktop\streamlit  dashboards\labour productivity\Labor_Productivity_Analytics_Dataset.xlsx',
+        'Labor_Productivity_Analytics_Dataset.xlsx',
         sheet_name='Sheet1',
         engine='openpyxl'
     )
