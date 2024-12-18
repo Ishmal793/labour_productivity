@@ -2,6 +2,15 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
+
+# Define required column names
+REQUIRED_COLUMNS = [
+    "Date", "Product_Type", "Department", "Shift", "Manager",
+    "Factory_Unit", "Machine_Unit", "Productivity_Zone",
+    "Anomaly_Conduct", "Labor_Efficiency_Rate"
+]
+
+
 # Function to load default data
 @st.cache_data
 def load_default_data():
@@ -11,30 +20,50 @@ def load_default_data():
         engine='openpyxl'
     )
 
+
+# Function to validate the dataset
+def validate_dataset(df):
+    missing_columns = [col for col in REQUIRED_COLUMNS if col not in df.columns]
+    if missing_columns:
+        return False, missing_columns
+    return True, []
+
+
 # Function to load uploaded files (supports Excel and CSV)
 def load_uploaded_file(uploaded_file):
     try:
         if uploaded_file.name.endswith('.xlsx'):
-            return pd.read_excel(uploaded_file, engine='openpyxl')
+            df = pd.read_excel(uploaded_file, engine='openpyxl')
         elif uploaded_file.name.endswith('.csv'):
-            return pd.read_csv(uploaded_file)
+            df = pd.read_csv(uploaded_file)
         else:
             st.sidebar.error("Unsupported file type! Please upload an Excel or CSV file.")
             st.stop()
+
+        # Validate dataset structure
+        is_valid, missing_columns = validate_dataset(df)
+        if not is_valid:
+            st.sidebar.error(
+                f"The uploaded dataset is missing the following required columns: {', '.join(missing_columns)}"
+            )
+            st.stop()
+
+        return df
     except Exception as e:
         st.sidebar.error(f"Error loading file: {e}")
         st.stop()
 
+
 # Sidebar for file upload or default dataset
-st.sidebar.title("Upload or Load Dataset")
+st.sidebar.title("📂 Data Selection")
 
 data_source = st.sidebar.radio(
     "Choose Data Source:",
-    ("Default Dataset", "Upload Your Own Dataset")
+    ("📊 Default Dataset", "📥 Upload Your Own Dataset")
 )
 
 # Load dataset based on user input
-if data_source == "Default Dataset":
+if data_source == "📊 Default Dataset":
     data = load_default_data()
     st.sidebar.success("Default dataset loaded successfully!")
 else:
@@ -49,21 +78,22 @@ else:
 
 
 # Refresh Button
-if st.button("Refresh Dashboard"):
+if st.button("🔄 Refresh Dashboard"):
     st.experimental_set_query_params()
 
 # Tooltip Message
 tooltip_message = (
-    "The dataset is a working process. You cannot open the Excel file directly, "
+    "⚠️ The dataset is a working process. You cannot open the Excel file directly, "
     "and no modifications can be made. You can only add data to existing columns, "
-    "and you cannot change the column names."
+    "and column names cannot be changed."
 )
 st.markdown(
-    f'<span style="color: grey; font-size: 12px; text-decoration: underline;">{tooltip_message}</span>',
+    f'<p style="color: gray; font-size: 12px;">{tooltip_message}</p>',
     unsafe_allow_html=True
 )
+
 # Sidebar setup
-st.sidebar.title("Labor Productivity Dashboard")
+st.sidebar.title("📈 Dashboard Categories")
 analysis_choice = st.sidebar.radio(
     "Select Analysis Category:",
     ["Labor Productivity Analytics", "Parameters for Analytics", "Visual Themes of Labor Productivity"]
@@ -110,11 +140,8 @@ elif analysis_choice == "Visual Themes of Labor Productivity":
         ]
     )
 
-
-
-
 # Sidebar filter section
-st.sidebar.header("Filters")
+st.sidebar.header("🔍 Filters")
 
 # Separate Date filters
 start_date = st.sidebar.date_input("Start Date", data['Date'].min())
@@ -152,18 +179,27 @@ filtered_data = data[
     (data['Anomaly_Conduct'].isin(anomaly_conduct) if anomaly_conduct else True) &
     (data['Labor_Efficiency_Rate'].between(efficiency_rate[0], efficiency_rate[1]))
 ]
+# Define color palettes
 color_palette = px.colors.qualitative.Set1
-color_palette2 = px.colors.qualitative.Set1_r # Using a vibrant color palette
-
+color_palette2 = px.colors.qualitative.Set2
+zone_colors = {'Low': 'red', "Yellow": "#FFFF8F", 'High': 'green'}
 
 # Generate charts based on selected options
 if analysis_choice == "Labor Productivity Analytics":
-    st.title("Labor Productivity Analytics Dashboard")
+
+    st.markdown(
+        "<h1 style='text-align: center;'><i class='fa fa-pie-chart'></i> 📈 Labor Productivity Analytics Dashboard ",
+        unsafe_allow_html=True)
+    st.markdown(
+        "Explore labor productivity metrics through interactive charts. "
+        "Use the filters in the sidebar to customize your analysis."
+    )
+
     if metric == "Labor Presence at Machine (within Zone)":
-        # 1. Labor Presence at Machine (within Zone)
         st.subheader("Labor Presence at Machine (within Zone)")
 
-        # 1. Bar Chart - Labor Presence by Productivity Zone and Shift
+        # Chart 1: Labor Presence by Productivity Zone and Shift
+        st.markdown("### Labor Presence by Productivity Zone and Shift")
         presence_chart = px.bar(
             filtered_data,
             x='Productivity_Zone',
@@ -171,20 +207,22 @@ if analysis_choice == "Labor Productivity Analytics":
             color='Shift',
             barmode='group',
             title="Labor Presence by Productivity Zone and Shift",
-
+            color_discrete_sequence=color_palette
         )
         presence_chart.update_layout(
-            font=dict(color="white"),  # White font for visibility
+            font=dict(family="Arial", size=12),
             xaxis_title="Productivity Zone",
-            yaxis_title="Labor Presence (hrs)"
+            yaxis_title="Labor Presence (hrs)",
+            title_x=0.5,
+            plot_bgcolor="rgba(0,0,0,0)",
+            paper_bgcolor="rgba(0,0,0,0)",
+            legend=dict(title="Shift", orientation="h", x=0.5, xanchor="center", y=-0.2)
         )
-        # Adding a white outline to bars for emphasis
-        presence_chart.update_traces()
         st.plotly_chart(presence_chart)
 
-        # 2. Stacked Bar Chart - Labor Presence by Shift and Machine Unit
+        # Chart 2: Labor Presence by Shift and Machine Unit
+        st.markdown("### Labor Presence by Shift and Machine Unit")
         presence_data = filtered_data.groupby(['Shift', 'Machine_Unit'])['Labor_Presence'].sum().reset_index()
-
         fig1 = px.bar(
             presence_data,
             x='Shift',
@@ -192,18 +230,21 @@ if analysis_choice == "Labor Productivity Analytics":
             color='Machine_Unit',
             title="Labor Presence by Shift and Machine Unit",
             labels={"Labor_Presence": "Presence Time", "Shift": "Shift"},
-            color_discrete_sequence=color_palette
+            color_discrete_sequence=color_palette2
         )
         fig1.update_layout(
-            font=dict(color="white"),
+            font=dict(family="Arial", size=12),
             xaxis_title="Shift",
-            yaxis_title="Total Presence Time (hrs)"
+            yaxis_title="Total Presence Time (hrs)",
+            title_x=0.5,
+            plot_bgcolor="rgba(0,0,0,0)",
+            paper_bgcolor="rgba(0,0,0,0)",
+            legend=dict(title="Machine Unit", orientation="v", x=1.02, xanchor="left", y=1)
         )
-        # White outline for stacked bars
-        fig1.update_traces()
         st.plotly_chart(fig1)
 
-        # 3. Line Chart - Average Labor Presence by Day and Shift
+        # Chart 3: Average Labor Presence by Day and Shift
+        st.markdown("### Average Labor Presence by Day and Shift")
         filtered_data['Day_of_Week'] = filtered_data['Date'].dt.day_name()
         average_presence_data = filtered_data.groupby(['Day_of_Week', 'Shift'])['Labor_Presence'].mean().reset_index()
 
@@ -213,69 +254,92 @@ if analysis_choice == "Labor Productivity Analytics":
             y='Labor_Presence',
             color='Shift',
             title="Average Labor Presence by Day and Shift",
+            markers=True,
             color_discrete_sequence=color_palette
         )
         fig2.update_layout(
-            font=dict(color="white"),
+            font=dict(family="Arial", size=12),
             xaxis_title="Day of Week",
-            yaxis_title="Avg Presence Time (hrs)"
+            yaxis_title="Avg Presence Time (hrs)",
+            title_x=0.5,
+            plot_bgcolor="rgba(0,0,0,0)",
+            paper_bgcolor="rgba(0,0,0,0)",
+            legend=dict(title="Shift", orientation="h", x=0.5, xanchor="center", y=-0.2)
         )
-        # White outline for line chart markers
-        fig2.update_traces(marker=dict(line=dict(color="white", width=1.5)))
         st.plotly_chart(fig2)
-
-
 
     elif metric == "Labor Total Produced Output":
         st.subheader("Labor Total Produced Output Over Time")
 
-        # Chart 2: Department Comparison (Grouped Bar Chart)
-        fig1= px.bar(filtered_data, x='Department', y='Labor_Total_Output', color='Shift',
-                      title='Labor Total Output by Department and Shift', barmode='group')
+        # Chart 1: Output by Department and Shift (Grouped Bar)
+        st.markdown("### Labor Total Output by Department and Shift")
+        fig1 = px.bar(
+            filtered_data,
+            x='Department',
+            y='Labor_Total_Output',
+            color='Shift',
+            title="Labor Total Output by Department and Shift",
+            barmode='group',
+            color_discrete_sequence=color_palette2
+        )
+        fig1.update_layout(
+            font=dict(family="Arial", size=12),
+            xaxis_title="Department",
+            yaxis_title="Total Output",
+            title_x=0.5,
+            plot_bgcolor="rgba(0,0,0,0)",
+            paper_bgcolor="rgba(0,0,0,0)",
+            legend=dict(title="Shift", orientation="h", x=0.5, xanchor="center", y=-0.2)
+        )
         st.plotly_chart(fig1)
 
-
-
-        # Chart 4: Monthly Aggregated Output by Department (Bar Chart)
+        # Chart 2: Monthly Aggregated Output by Department (Bar)
+        st.markdown("### Monthly Total Produced Output by Department")
         filtered_data['Month'] = filtered_data['Date'].dt.to_period("M").dt.to_timestamp()
         monthly_data = filtered_data.groupby(['Month', 'Department'])['Labor_Total_Output'].sum().reset_index()
 
-        fig4 = px.bar(monthly_data, x='Month', y='Labor_Total_Output', color='Department',
-                      title='Monthly Total Produced Output by Department',
-                      labels={"Labor_Total_Output": "Total Output"})
-        st.plotly_chart(fig4)
-        # Chart 1: Box Plot by Department and Shift
-        fig1 = px.box(filtered_data, x='Department', y='Labor_Total_Output', color='Shift',
-                      title='Output Distribution by Department and Shift')
-        st.plotly_chart(fig1)
-
-        # Chart 2: Grouped Bar Chart by Factory Unit and Department
-        fig2 = px.bar(filtered_data, x='Factory_Unit', y='Labor_Total_Output', color='Department',
-                      title='Labor Total Output by Factory Unit and Department', barmode='group',
-                      labels={"Labor_Total_Output": "Total Output"})
+        fig2 = px.bar(
+            monthly_data,
+            x='Month',
+            y='Labor_Total_Output',
+            color='Department',
+            title="Monthly Total Produced Output by Department",
+            labels={"Labor_Total_Output": "Total Output"},
+            color_discrete_sequence=color_palette
+        )
+        fig2.update_layout(
+            font=dict(family="Arial", size=12),
+            xaxis_title="Month",
+            yaxis_title="Total Output",
+            title_x=0.5,
+            plot_bgcolor="rgba(0,0,0,0)",
+            paper_bgcolor="rgba(0,0,0,0)",
+            legend=dict(title="Department", orientation="v", x=1.02, xanchor="left", y=1)
+        )
         st.plotly_chart(fig2)
 
-
-        # Chart 1: Bar Chart by Factory Unit and Productivity Zone with Zone Colors
-        zone_colors = {'Low': 'red', "Yellow": "#FFFF8F", 'High': 'green'}
-
-        # Chart 2: Box Plot by Factory Unit and Productivity Zone
-        fig2 = px.box(
+        # Chart 3: Box Plot by Factory Unit and Productivity Zone
+        st.markdown("### Output Distribution by Factory Unit and Productivity Zone")
+        fig3 = px.box(
             filtered_data,
             x='Factory_Unit',
             y='Labor_Total_Output',
             color='Productivity_Zone',
-            title='Output Distribution by Factory Unit and Productivity Zone',
+            title="Output Distribution by Factory Unit and Productivity Zone",
             color_discrete_map=zone_colors,
             labels={"Labor_Total_Output": "Total Output"}
         )
-        st.plotly_chart(fig2)
-
-
+        fig3.update_layout(
+            font=dict(family="Arial", size=12),
+            xaxis_title="Factory Unit",
+            yaxis_title="Labor Total Output",
+            title_x=0.5,
+            plot_bgcolor="rgba(0,0,0,0)",
+            paper_bgcolor="rgba(0,0,0,0)",
+            legend=dict(title="Productivity Zone", orientation="v", x=1.02, xanchor="left", y=1)
+        )
+        st.plotly_chart(fig3)
     elif metric == "Productivity (90% target achieved with 90% presence)":
-
-
-
         # Visualization 2: Average Labor Presence by Product Type (Bar Chart)
         st.subheader("Average Labor Presence by Product Type")
         average_presence = filtered_data.groupby('Product_Type')['Labor_Presence'].mean().reset_index()
@@ -288,10 +352,16 @@ if analysis_choice == "Labor Productivity Analytics":
             labels={'Labor_Presence': 'Average Labor Presence (%)'},
             color_discrete_sequence=px.colors.qualitative.Safe
         )
+        fig_presence_product.update_layout(
+            font=dict(size=14, color="white"),
+            plot_bgcolor="rgba(0,0,0,0)",
+            xaxis_title="Product Type",
+            yaxis_title="Average Labor Presence (%)",
+            title_x=0.5
+        )
         st.plotly_chart(fig_presence_product, use_container_width=True)
 
-
-        # Visualization 3: Productivity by Shift
+        # Visualization 3: Productivity by Shift (Bar Chart)
         st.subheader("Productivity by Shift")
         fig_productivity_shift = px.bar(
             filtered_data,
@@ -300,17 +370,23 @@ if analysis_choice == "Labor Productivity Analytics":
             title="Productivity by Shift",
             color='Shift',
             labels={'Productivity': 'Productivity (%)'},
-            color_discrete_sequence = px.colors.qualitative.Set3
+            color_discrete_sequence=px.colors.qualitative.Set3
+        )
+        fig_productivity_shift.update_layout(
+            font=dict(size=14, color="white"),
+            plot_bgcolor="rgba(0,0,0,0)",
+            xaxis_title="Shift",
+            yaxis_title="Productivity (%)",
+            title_x=0.5
         )
         st.plotly_chart(fig_productivity_shift, use_container_width=True)
-
-
 
 
     elif metric == "Labor Target Productivity":
         # Calculate Labor Target Productivity
         filtered_data['Labor_Target_Productivity'] = (filtered_data['Labor_Total_Output'] / filtered_data[
             'Labor_Target_Output']) * 100
+
         # 4. Labor Target Productivity Comparison
         st.subheader("Labor Output vs Target Output")
         target_chart = px.bar(
@@ -320,32 +396,71 @@ if analysis_choice == "Labor Productivity Analytics":
             barmode='group',
             title="Comparison of Actual Output vs Target Output"
         )
+        target_chart.update_layout(
+            font=dict(size=14, color="white"),
+            plot_bgcolor="rgba(0,0,0,0)",
+            xaxis_title="Department",
+            yaxis_title="Output",
+            title_x=0.5
+        )
         st.plotly_chart(target_chart)
 
         # Additional Plot: Productivity by Shift and Department
-        fig2 = px.bar(filtered_data, x='Shift', y=['Labor_Total_Output', 'Labor_Target_Output'] ,
-                      title='Labor Target Productivity by Shift',
-                      labels={'Labor_Target_Productivity': 'Labor Target Productivity (%)', 'Shift': 'Shift'},
-                      barmode='group')
-        fig2.update_layout(xaxis_title='Shift', yaxis_title='Labor Target Productivity (%)')
+        fig2 = px.bar(
+            filtered_data,
+            x='Shift',
+            y=['Labor_Total_Output', 'Labor_Target_Output'],
+            title='Labor Target Productivity by Shift',
+            labels={'Labor_Target_Productivity': 'Labor Target Productivity (%)', 'Shift': 'Shift'},
+            barmode='group'
+        )
+        fig2.update_layout(
+            font=dict(size=14, color="white"),
+            plot_bgcolor="rgba(0,0,0,0)",
+            xaxis_title='Shift',
+            yaxis_title='Labor Target Productivity (%)',
+            title_x=0.5
+        )
         st.plotly_chart(fig2)
+
         # Additional Plot: Productivity by Shift and Department
-        fig2 = px.bar(filtered_data, x='Productivity_Zone', y=['Labor_Total_Output', 'Labor_Target_Output'] ,
-                      title='Labor Target Productivity by Productivity Zone ',
-                      labels={'Labor_Target_Productivity': 'Labor Target Productivity (%)', 'Shift': 'Shift'},
-                      barmode='group')
-        fig2.update_layout(xaxis_title='Shift', yaxis_title='Labor Target Productivity (%)')
-        st.plotly_chart(fig2)# Additional Plot: Productivity by Shift and Department
-        fig2 = px.bar(filtered_data, x='Labor_Efficiency_Rate', y=['Labor_Total_Output', 'Labor_Target_Output'] ,
-                      title='Labor Target Productivity by Shift and Department',
-                      labels={'Labor_Target_Productivity': 'Labor Target Productivity (%)', 'Shift': 'Shift'},
-                      barmode='group')
-        fig2.update_layout(xaxis_title='Shift', yaxis_title='Labor Target Productivity (%)')
+        fig2 = px.bar(
+            filtered_data,
+            x='Productivity_Zone',
+            y=['Labor_Total_Output', 'Labor_Target_Output'],
+            title='Labor Target Productivity by Productivity Zone',
+            labels={'Labor_Target_Productivity': 'Labor Target Productivity (%)', 'Shift': 'Shift'},
+            barmode='group'
+        )
+        fig2.update_layout(
+            font=dict(size=14, color="white"),
+            plot_bgcolor="rgba(0,0,0,0)",
+            xaxis_title='Productivity Zone',
+            yaxis_title='Labor Target Productivity (%)',
+            title_x=0.5
+        )
         st.plotly_chart(fig2)
+
+        # Additional Plot: Productivity by Shift and Department
+        fig2 = px.bar(
+            filtered_data,
+            x='Labor_Efficiency_Rate',
+            y=['Labor_Total_Output', 'Labor_Target_Output'],
+            title='Labor Target Productivity by Shift and Department',
+            labels={'Labor_Target_Productivity': 'Labor Target Productivity (%)', 'Shift': 'Shift'},
+            barmode='group'
+        )
+        fig2.update_layout(
+            font=dict(size=14, color="white"),
+            plot_bgcolor="rgba(0,0,0,0)",
+            xaxis_title='Labor Efficiency Rate',
+            yaxis_title='Labor Target Productivity (%)',
+            title_x=0.5
+        )
+        st.plotly_chart(fig2)
+
 
     elif metric == "Labor Efficiency Rate":
-
-
         # Create a separate DataFrame for resampled weekly data
         weekly_data = filtered_data[['Date', 'Labor_Efficiency_Rate']].copy()
         weekly_data['Date'] = pd.to_datetime(weekly_data['Date'])
@@ -357,13 +472,15 @@ if analysis_choice == "Labor Productivity Analytics":
             weekly_data,
             x='Date',
             y='Labor_Efficiency_Rate',
-
             title="Labor Efficiency Rate Over Time (Weekly Average)",
             labels={'Labor_Efficiency_Rate': 'Efficiency Rate', 'Date': 'Date'}
         )
+        fig.update_layout(
+            font=dict(size=14, color="white"),
+            plot_bgcolor="rgba(0,0,0,0)",
+            title_x=0.5
+        )
         st.plotly_chart(fig)
-
-
 
         # 2. Bar Chart for Labor Efficiency Rate by Product Type
         st.subheader("Labor Efficiency Rate by Product Type")
@@ -374,6 +491,11 @@ if analysis_choice == "Labor Productivity Analytics":
             title="Labor Efficiency Rate by Product Type",
             labels={'Labor_Efficiency_Rate': 'Efficiency Rate', 'Product_Type': 'Product Type'},
             color='Product_Type'
+        )
+        fig.update_layout(
+            font=dict(size=14, color="white"),
+            plot_bgcolor="rgba(0,0,0,0)",
+            title_x=0.5
         )
         st.plotly_chart(fig)
 
@@ -387,10 +509,15 @@ if analysis_choice == "Labor Productivity Analytics":
             labels={'Labor_Efficiency_Rate': 'Efficiency Rate', 'Department': 'Department'},
             color='Department'
         )
+        fig.update_layout(
+            font=dict(size=14, color="white"),
+            plot_bgcolor="rgba(0,0,0,0)",
+            title_x=0.5
+        )
         st.plotly_chart(fig)
 
-    elif metric == "Productivity Zone - Green (90%+), Yellow (80%-90%), Red (<80%)":
 
+    elif metric == "Productivity Zone - Green (90%+), Yellow (80%-90%), Red (<80%)":
         # 1. Stacked Bar Chart for Productivity Zones by Department
         st.subheader("Productivity Zone Distribution by Department")
         fig = px.histogram(
@@ -401,6 +528,11 @@ if analysis_choice == "Labor Productivity Analytics":
             labels={'Productivity_Zone': 'Zone', 'Department': 'Department'},
             barmode='stack',
             color_discrete_map={'Green': 'green', 'Yellow': 'yellow', 'Red': 'red'}
+        )
+        fig.update_layout(
+            font=dict(size=14, color="white"),
+            plot_bgcolor="rgba(0,0,0,0)",
+            title_x=0.5
         )
         st.plotly_chart(fig)
 
@@ -414,6 +546,11 @@ if analysis_choice == "Labor Productivity Analytics":
             color='Productivity_Zone',
             color_discrete_map=zone_colors,
             hole=0.3
+        )
+        fig3.update_layout(
+            font=dict(size=14, color="white"),
+            plot_bgcolor="rgba(0,0,0,0)",
+            title_x=0.5
         )
         st.plotly_chart(fig3)
 
@@ -432,71 +569,115 @@ if analysis_choice == "Labor Productivity Analytics":
             labels={'value': 'Count', 'Date': 'Date'},
             color_discrete_map={'Green': 'green', 'Yellow': 'yellow', 'Red': 'red'}
         )
+        fig.update_layout(
+            font=dict(size=14, color="white"),
+            plot_bgcolor="rgba(0,0,0,0)",
+            title_x=0.5
+        )
         st.plotly_chart(fig)
 
-
-
     elif metric == "Labor Anomaly Conduct":
-        st.subheader("Labor Anomaly Conduct")
+        st.subheader("Labor Anomaly Conduct Insights")
+
+        # Bar Chart: Instances of Labor Anomaly Conduct by Shift
         anomaly_chart = px.bar(
             filtered_data,
             x='Anomaly_Conduct',
-            title="Instances of Labor Anomaly Conduct",
-            color='Shift'
+            color='Shift',
+            title="Instances of Labor Anomaly Conduct by Shift",
+            labels={"Anomaly_Conduct": "Type of Anomaly", "Shift": "Shift"},
+            color_discrete_sequence=px.colors.qualitative.Pastel
+        )
+        anomaly_chart.update_layout(
+            font=dict(size=14, color="white"),
+            plot_bgcolor="rgba(0,0,0,0)",
+            xaxis_title="Anomaly Conduct",
+            yaxis_title="Frequency",
+            title_x=0.5
         )
         st.plotly_chart(anomaly_chart)
+
+        # Bar Chart: Labor Anomalies by Date and Shift
         fig = px.bar(
             filtered_data,
             x="Date",
             color="Anomaly_Conduct",
             title="Labor Anomalies by Date and Shift",
-
-            labels={"Anomaly_Conduct": "Type of Anomaly", "count": "Frequency"}
+            labels={"Anomaly_Conduct": "Type of Anomaly", "Date": "Date"},
+            color_discrete_sequence=px.colors.qualitative.Set3
         )
-
+        fig.update_layout(
+            font=dict(size=14, color="white"),
+            plot_bgcolor="rgba(0,0,0,0)",
+            xaxis=dict(title="Date", showgrid=False),
+            yaxis=dict(title="Frequency", showgrid=True),
+            title_x=0.5
+        )
         st.plotly_chart(fig)
-        
 
+        # Bar Chart: Anomaly Distribution by Department
         st.subheader("Anomaly Distribution by Department")
         fig_dept = px.bar(
             filtered_data,
             x="Anomaly_Conduct",
             color="Department",
             title="Anomalies by Department",
-            labels={"Anomaly_Conduct": "Type of Anomaly"},
-
+            labels={"Anomaly_Conduct": "Type of Anomaly", "Department": "Department"},
+            color_discrete_sequence=px.colors.qualitative.Vivid
         )
-
+        fig_dept.update_layout(
+            font=dict(size=14, color="white"),
+            plot_bgcolor="rgba(0,0,0,0)",
+            xaxis_title="Type of Anomaly",
+            yaxis_title="Count",
+            title_x=0.5
+        )
         st.plotly_chart(fig_dept)
 
-        # Visualization: Anomaly Distribution by Factory Unit
+        # Bar Chart: Anomaly Distribution by Factory Unit
         st.subheader("Anomaly Distribution by Factory Unit")
         fig_factory = px.bar(
             filtered_data,
             x="Anomaly_Conduct",
             color="Factory_Unit",
             title="Anomalies by Factory Unit",
-            labels={"Anomaly_Conduct": "Type of Anomaly"},
-
+            labels={"Anomaly_Conduct": "Type of Anomaly", "Factory_Unit": "Factory Unit"},
+            color_discrete_sequence=px.colors.qualitative.Safe
         )
-
+        fig_factory.update_layout(
+            font=dict(size=14, color="white"),
+            plot_bgcolor="rgba(0,0,0,0)",
+            xaxis_title="Type of Anomaly",
+            yaxis_title="Count",
+            title_x=0.5
+        )
         st.plotly_chart(fig_factory)
 
-
-        fig = px.scatter(
+        # Scatter Plot: Labor Presence vs. Anomalies
+        fig_scatter = px.scatter(
             filtered_data,
             x="Labor_Presence",
             y="Anomaly_Conduct",
             color="Anomaly_Conduct",
             title="Labor Presence vs. Anomalies",
-            labels={"Labor_Presence": "Labor Presence (%)", "Anomaly_Conduct": "Type of Anomaly"}
+            labels={"Labor_Presence": "Labor Presence (hrs)", "Anomaly_Conduct": "Type of Anomaly"},
+            color_discrete_sequence=px.colors.qualitative.T10
         )
-
-        st.plotly_chart(fig)
-
+        fig_scatter.update_traces(marker=dict(size=10, line=dict(width=1, color="white")))
+        fig_scatter.update_layout(
+            font=dict(size=14, color="white"),
+            plot_bgcolor="rgba(0,0,0,0)",
+            xaxis_title="Labor Presence (hrs)",
+            yaxis_title="Type of Anomaly",
+            title_x=0.5
+        )
+        st.plotly_chart(fig_scatter)
 
 elif analysis_choice == "Parameters for Analytics":
-    st.title("Labor Productivity Analytics by Parameters")
+    st.markdown(
+        "<h1 style='text-align: center;'><i class='fa fa-pie-chart'></i> 📊  Labor Productivity Analytics by Parameters</h1>",
+        unsafe_allow_html=True)
+
     if parameter == "Product":
 
         # Top 5 Products by Sales and Profit
@@ -891,6 +1072,10 @@ elif analysis_choice == "Parameters for Analytics":
         st.plotly_chart(fig5)
 
 elif analysis_choice == "Visual Themes of Labor Productivity":
+    st.markdown(
+        "<h1 style='text-align: center;'><i class='fa fa-pie-chart'></i> ⚙️ Visual Themes of Labor Productivity</h1>",
+        unsafe_allow_html=True)
+
     if theme == "Productivity Pulse":
         st.title("Productivity Pulse")
 
