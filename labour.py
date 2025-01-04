@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
+from streamlit_extras.dataframe_explorer import dataframe_explorer
 
 # Define required column names
 REQUIRED_COLUMNS = [
@@ -9,7 +10,6 @@ REQUIRED_COLUMNS = [
     "Factory_Unit", "Machine_Unit", "Productivity_Zone",
     "Anomaly_Conduct", "Labor_Efficiency_Rate"
 ]
-
 
 # Function to load default data
 @st.cache_data
@@ -20,14 +20,12 @@ def load_default_data():
         engine='openpyxl'
     )
 
-
 # Function to validate the dataset
 def validate_dataset(df):
     missing_columns = [col for col in REQUIRED_COLUMNS if col not in df.columns]
     if missing_columns:
         return False, missing_columns
     return True, []
-
 
 # Function to load uploaded files (supports Excel and CSV)
 def load_uploaded_file(uploaded_file):
@@ -53,7 +51,6 @@ def load_uploaded_file(uploaded_file):
         st.sidebar.error(f"Error loading file: {e}")
         st.stop()
 
-
 # Sidebar for file upload or default dataset
 st.sidebar.title("📂 Data Selection")
 
@@ -76,7 +73,6 @@ else:
         st.sidebar.warning("Please upload a dataset to proceed.")
         st.stop()
 
-
 # Refresh Button
 if st.button("🔄 Refresh Dashboard"):
     st.experimental_set_query_params()
@@ -88,8 +84,50 @@ tooltip_message = (
     "and column names cannot be changed."
 )
 st.markdown(
-    f'<p style="color: gray; font-size: 12px;">{tooltip_message}</p>',
+    f'<p style="color: gray; font-size: 12px; text-align: center;">{tooltip_message}</p>',
     unsafe_allow_html=True
+)
+
+# Custom Greenish Theme Styling
+st.markdown(
+    """
+    <style>
+        /* Sidebar and header styling */
+        .css-18e3th9 {
+            background-color: #9EDF9C;  /* Light Greenish background */
+            color: black;
+        }
+        .css-1kyxreq {
+            color: #526E48;  /* Dark Green text color */
+        }
+        .css-18f1otk {
+            background-color: #62825D;  /* Medium Green background */
+            color: white;
+            border-radius: 10px;
+        }
+        .stSidebar [data-testid="stSidebarNav"] {
+            background-color: #C2FFC7;  /* Lightest Green */
+            border-right: 1px solid #62825D;
+        }
+        .stButton>button {
+            background-color: #9EDF9C;  /* Green button color */
+            color: white;
+        }
+        .stRadio>div>label {
+            font-weight: bold;
+            color: #526E48;  /* Dark green for radio button labels */
+        }
+        .stSelectbox>div>label {
+            color: #526E48;  /* Dark green for select box labels */
+        }
+        .stDataFrame {
+            color: #62825D;  /* Medium Green text color for DataFrame */
+        }
+        .stTextInput>div>label {
+            color: #9EDF9C;  /* Lighter Greenish label for text input */
+        }
+    </style>
+    """, unsafe_allow_html=True
 )
 
 # Sidebar setup
@@ -140,46 +178,26 @@ elif analysis_choice == "Visual Themes of Labor Productivity":
         ]
     )
 
-# Sidebar filter section
-st.sidebar.header("🔍 Filters")
+data['Date'] = pd.to_datetime(data['Date'])  # Ensure the 'Date' column is in datetime format
 
-# Separate Date filters
-start_date = st.sidebar.date_input("Start Date", data['Date'].min())
-end_date = st.sidebar.date_input("End Date", data['Date'].max())
+# Sidebar for date selection
+with st.sidebar:
+    st.title("Select Date Range")
+    start_date = st.date_input("Start Date", value=data['Date'].min(), min_value=data['Date'].min(), max_value=data['Date'].max())
+    end_date = st.date_input("End Date", value=data['Date'].max(), min_value=data['Date'].min(), max_value=data['Date'].max())
 
-# Other filters
-product_type = st.sidebar.multiselect("Select Product Type", options=data['Product_Type'].unique())
-department = st.sidebar.multiselect("Select Department", options=data['Department'].unique())
-shift = st.sidebar.multiselect("Select Shift", options=data['Shift'].unique())
-manager = st.sidebar.multiselect("Select Manager", options=data['Manager'].unique())
-factory_unit = st.sidebar.multiselect("Select Factory Unit", options=data['Factory_Unit'].unique())
-machine_unit = st.sidebar.multiselect("Select Machine Unit", options=data['Machine_Unit'].unique())
-productivity_zone = st.sidebar.multiselect("Select Productivity Zone", options=data['Productivity_Zone'].unique())
-anomaly_conduct = st.sidebar.multiselect("Select Anomaly Conduct", options=data['Anomaly_Conduct'].unique())
 
-# Efficiency rate slider
-efficiency_rate = st.sidebar.slider(
-    "Select Labor Efficiency Rate",
-    min_value=float(data['Labor_Efficiency_Rate'].min()),
-    max_value=float(data['Labor_Efficiency_Rate'].max()),
-    value=(float(data['Labor_Efficiency_Rate'].min()), float(data['Labor_Efficiency_Rate'].max()))
-)
+# Display a message with the selected date range
+st.info(f"Displaying data between **[{start_date}]** and **[{end_date}]**.")
 
-# Apply filters
-filtered_data = data[
-    (data['Date'] >= pd.to_datetime(start_date)) &
-    (data['Date'] <= pd.to_datetime(end_date)) &
-    (data['Product_Type'].isin(product_type) if product_type else True) &
-    (data['Department'].isin(department) if department else True) &
-    (data['Shift'].isin(shift) if shift else True) &
-    (data['Manager'].isin(manager) if manager else True) &
-    (data['Factory_Unit'].isin(factory_unit) if factory_unit else True) &
-    (data['Machine_Unit'].isin(machine_unit) if machine_unit else True) &
-    (data['Productivity_Zone'].isin(productivity_zone) if productivity_zone else True) &
-    (data['Anomaly_Conduct'].isin(anomaly_conduct) if anomaly_conduct else True) &
-    (data['Labor_Efficiency_Rate'].between(efficiency_rate[0], efficiency_rate[1]))
-]
-# Define color palettes
+df2 = data[(data['Date'] >= pd.to_datetime(start_date)) & (data['Date'] <= pd.to_datetime(end_date))]
+
+# Expandable section for filtered data
+with st.expander("Filter Data:"):
+    filtered_data = dataframe_explorer(df2, case=False)
+    st.dataframe(filtered_data, use_container_width=True)
+    
+    # Define color palettes
 color_palette = px.colors.qualitative.Set1
 color_palette2 = px.colors.qualitative.Set2
 zone_colors = {'Low': 'red', "Yellow": "#FFFF8F", 'High': 'green'}
