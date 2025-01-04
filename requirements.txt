@@ -6,7 +6,7 @@ openpyxl
 seaborn
 matplotlib
 statsmodels
-
+streamlit-extras==0.3.2
 
 
 
